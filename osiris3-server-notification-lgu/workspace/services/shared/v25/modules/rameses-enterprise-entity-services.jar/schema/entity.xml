@@ -1,0 +1,58 @@
+<schema>
+	<element name="entity" tablename="entity">
+		<field name="objid" primary="true"/>
+		<field name="entityno" required="true"/>
+		<field name="name" required="true"/>
+		<field name="entityname" />
+		<field name="address" required="true"/>
+		<field name="mailingaddress" />
+		<field name="type" required="true"/>
+		<field name="remarks" />
+	</element>
+
+	<element name="contact" tablename="entitycontact">
+		<field name="objid" primary="true"/>
+		<field name="entityid" required="true"/>
+		<field name="contacttype" required="true"/>
+		<field name="contact" required="true"/>
+	</element> 
+
+	<element name="id" tablename="entityid">
+		<field name="objid" primary="true"/>
+		<field name="entityid" required="true"/>
+		<field name="idtype" required="true"/>
+		<field name="idno" required="true"/>
+		<field name="dtissued" required="true"/>
+		<field name="dtexpiry" required="true"/>
+	</element> 
+
+	<!-- added for physical attributes -->
+	<element name="physical" tablename="entityindividual_physical">
+		<field name="objid" primary="true"/>
+		<field name="height"/>
+		<field name="weight"/>
+		<field name="eyecolor"/>
+		<field name="haircolor"/>
+		<field name="photo_objid"/>
+		<field name="fingerprint_objid"/>
+		<field name="signature_objid"/>
+	</element>
+
+	<element name="photo" tablename="entity_photo">
+		<field name="objid" primary="true"/>
+		<field name="entityid"  />
+		<field name="dtfiled" />
+		<field name="image" />
+	</element>
+		
+	<element name="fingerprint" tablename="entity_fingerprint">
+		<field name="objid" primary="true"/>
+		<field name="entityid"  />
+		<field name="dtfiled" />
+		<field name="leftthumb_image" />
+		<field name="leftthumb_fmd" />
+		<field name="rightthumb_image" />
+		<field name="rightthumb_fmd" />
+	</element>
+
+</schema>

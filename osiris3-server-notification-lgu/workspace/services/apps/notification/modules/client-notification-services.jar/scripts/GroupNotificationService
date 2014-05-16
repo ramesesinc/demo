@@ -1,0 +1,156 @@
+import com.rameses.annotations.*;
+import com.rameses.util.*;
+
+class GroupNotificationService
+{   
+    @ActiveDB('group_notification')
+    def em;
+
+    @Service('DateService')
+    def dateSvc;
+
+    @Service 
+    def self;
+
+    @Env
+    def env;
+
+    @ProxyMethod 
+    public def addMessage( data ) { 
+        data.notificationid = 'MSG'+new java.rmi.server.UID();
+        data.dtfiled = dateSvc.serverDate; 
+        if (!data.senderid) data.senderid = env.USERID; 
+
+        return createMessage( data ); 
+    } 
+
+    private def createMessage( data ) {
+        if (data.data == null) data.data = [:];
+
+        if (!(data.data instanceof String)) {
+            char[] encoded = new Base64CoderImpl().encode(data.data); 
+            data.data = (encoded? new String(encoded): null); 
+        }
+    
+        em.create(data); 
+        notify(data); 
+        return data;  
+    }
+
+    @ProxyMethod 
+    public void removeMessage( params ) { 
+        def data = null; 
+        if (params.notificationid) { 
+            data = em.findByNotificationid( params ); 
+        } else { 
+            data = em.findByPrimary( params ); 
+        } 
+
+        if (!data) return; 
+
+        em.delete(data); 
+        self.notifyRemove(data);   
+    } 
+
+    @ProxyMethod 
+    public def getList( params ) {
+        return em.getList( params ); 
+    } 
+
+    @ProxyMethod 
+    public void getNotified( params ) {
+        if (!params.groups) return;
+
+        params.groups.each {
+            def list = getList([groupid: it]); 
+            self.notifyMessages(list); 
+        } 
+    } 
+
+    @ProxyMethod(local=true)  
+    public void importMessage( data ) {
+        def old = em.findByObjid( [objid: data.objid] ); 
+        if (old) {
+            //record already exist 
+            return; 
+        } 
+
+        data.notificationid = 'IMSG'+new java.rmi.server.UID();    
+        createMessage( data ); 
+    } 
+
+
+
+    @XConnection('ws_sender')
+    def wssender;
+
+    @Async
+    @ProxyMethod(local=true)
+    public void notify( data ) {
+        data.channel = 'group'; 
+        data.status  = 'PENDING';
+        data.group = data.channel;         
+        data.data = resolveData(data.data);
+        wssender.send( data ); 
+    }    
+
+    @Async
+    @ProxyMethod(local=true)
+    public void notifyRemove( data ) {
+        data.channel = 'group'; 
+        data.status  = 'REMOVED'; 
+        data.group = data.channel;
+        wssender.send( data ); 
+    }     
+
+    @Async
+    @ProxyMethod(local=true)
+    public void notifyMessages( list ) {
+        list?.each { 
+            it.channel = 'group'; 
+            it.status  = 'PENDING'; 
+            it.group = it.channel;
+            it.data = resolveData(it.data); 
+            wssender.send( it ); 
+        } 
+    } 
+
+
+    /*
+        helper and supporting methods 
+    */
+    private def resolveData( data ) {
+        if (data == null) return null; 
+        try {
+            if (data instanceof String) {
+                def bytes = new Base64CoderImpl().decode(data.toCharArray()); 
+                return toObject(bytes); 
+            } else if (data instanceof byte[]) {
+                return toObject(data); 
+            } else {
+                return data; 
+            }
+        } catch(Throwable t) {
+            return data; 
+        } 
+    }
+
+    private Object toObject(byte[] bytes) {
+        if (bytes == null || bytes.length == 0) return null; 
+        
+        def bais = null;
+        def ois = null;
+        try {
+            bais = new java.io.ByteArrayInputStream(bytes); 
+            ois = new java.io.ObjectInputStream(bais);
+            return ois.readObject();
+        } catch(RuntimeException re) {
+            throw re; 
+        } catch(Exception e) {
+            throw new RuntimeException(e.getMessage(), e); 
+        } finally {
+            try { ois.close(); }catch(Throwable t){;} 
+            try { bais.close(); }catch(Throwable t){;} 
+        } 
+    }      
+}

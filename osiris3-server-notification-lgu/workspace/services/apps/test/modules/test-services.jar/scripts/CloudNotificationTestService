@@ -1,0 +1,55 @@
+import com.rameses.annotations.*;
+import com.rameses.util.*;
+
+class CloudNotificationTestService
+{   
+    @Service(value='CloudNotificationService', connection='cloud_notification_proxy')
+    def remote;
+
+    @ProxyMethod 
+    public def testAddMessage( params ) { 
+        if (params == null) params = [:]; 
+
+        def data = [
+            objid    : 'MSG' + new java.rmi.server.UID(), 
+            sender   : 'System Administrator', 
+            senderid : 'sa',            
+            channel  : 'etracs',
+            groupid  : params.groupid, 
+            message  : params.message, 
+            filetype : params.filetype, 
+            origin   : params.origin
+        ]; 
+        if (!data.groupid) data.groupid='test';
+        if (!data.filetype) data.filetype='xmessage';
+        if (!data.origin) data.origin='testlgu';        
+        if (!data.message) data.message='Message ' + data.objid;
+
+        data.data = [ 
+            remarks: 'My Sample Data',
+            name: 'Juan Dela Cruz'
+        ]; 
+
+        remote.addMessage(data); 
+        return data; 
+    } 
+
+    @ProxyMethod 
+    public def testAddAttachment( params ) { 
+        if (params == null) params = [:]; 
+        
+        def data = [
+            objid    : params.objid, 
+            parentid : params.parentid, 
+            name     : params.name, 
+            fileid   : params.fileid,
+            indexno  : params.indexno
+        ]; 
+        if (!data.name) data.name = 'attachment'; 
+        if (!data.fileid) data.fileid = 'file' + new java.rmi.server.UID();
+        if (!data.indexno) data.indexno = 1;
+
+        remote.addAttachment( data ); 
+        return data; 
+    } 
+} 

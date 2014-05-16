@@ -1,0 +1,120 @@
+import com.rameses.annotations.*;
+import com.rameses.util.*;
+
+class CloudNotificationService
+{   
+    @ActiveDB('cloud_notification')
+    def em;
+
+    @Service('DateService')
+    def dateSvc;
+
+    @Env
+    def env;
+
+    @ProxyMethod 
+    public def addMessage( data ) { 
+        if (!data) throw new Exception('Please provide parameters'); 
+        if (!data.objid) data.objid = 'MSG'+new java.rmi.server.UID(); 
+        if (!data.senderid) data.senderid = env.USERID; 
+        if (!data.channelgroup) data.channelgroup = data.channel; 
+        if (!data.attachmentcount) data.attachmentcount = 0;
+        if (!data.data) data.data = [:];
+
+        def rundate = dateSvc.serverDate;
+        data.dtfiled = rundate.toString(); 
+
+        if (!(data.data instanceof String)) {
+            def io = new com.rameses.io.IOStream();
+            byte[] bytes = io.toByteArray(data.data); 
+            char[] encoded = new Base64CoderImpl().encode(bytes); 
+            data.data = (encoded? new String(encoded): null); 
+        }
+        
+        em.create( data ); 
+        def pendingdata = [
+            objid:      data.objid,
+            dtfiled:    data.dtfiled, 
+            dtexpiry:   dateSvc.add(rundate, '5m'), 
+            dtretry:    data.dtfiled,
+            type:       'HEADER' 
+        ]; 
+        em.create( pendingdata, 'pending' ); 
+
+        data.traceid = 'RCVMSG' + new java.rmi.server.UID(); 
+        data.tracetime = data.dtfiled; 
+        em.create( data, 'received' ); 
+        return data; 
+    } 
+
+    @ProxyMethod 
+    public void removeMessage( params ) { 
+        def data = em.read( params ); 
+        if (!data) return; 
+
+        em.removeFailed( [refid: data.objid] ); 
+        em.removePending( data ); 
+        em.removeDelivered( data ); 
+        em.removeReceived( data ); 
+        em.delete( data ); 
+    } 
+
+
+    @ProxyMethod 
+    public def addAttachment( data ) { 
+        if (!data) throw new Exception('Please provide parameters'); 
+
+        def header = em.read([objid: data.parentid]); 
+        if (!header) throw new Exception("'"+data.parentid+"' header record not found"); 
+        if (!data.objid) data.objid = 'ATTC'+new java.rmi.server.UID(); 
+
+        def rundate = dateSvc.serverDate;
+        data.dtfiled = rundate.toString(); 
+        em.create( data, 'attachment' ); 
+
+        def pendingdata = [
+            objid:      data.objid,
+            dtfiled:    data.dtfiled, 
+            dtexpiry:   dateSvc.add(rundate, '5m'), 
+            dtretry:    data.dtfiled,
+            type:       'ATTACHMENT' 
+        ]; 
+        em.create( pendingdata, 'pending' ); 
+        return data;  
+    } 
+
+    @ProxyMethod 
+    public void removeAttachment( params ) { 
+        def data = em.read( params, 'attachment' ); 
+        if (!data) return; 
+
+        em.removeFailed( [refid: data.objid] ); 
+        em.removePending( data );         
+        em.delete( data, 'attachment' ); 
+    }  
+
+    @ProxyMethod 
+    public def getAttachments( params ) {
+        return em.getAttachments( params ); 
+    }
+
+    @ProxyMethod 
+    public def getList( params ) {
+        return em.getList( params ); 
+    } 
+
+    @Async 
+    @ProxyMethod
+    public void markAsFailed( params ) {
+        em.removePending( [objid: params.objid] );   
+
+        def data = [
+            objid:          'FMSG'+new java.rmi.server.UID(), 
+            dtfiled:        dateSvc.serverDate, 
+            refid:          params.objid, 
+            reftype:        params.type, 
+            errormessage:   params.errormessage 
+        ];
+        em.create( data, 'failed' ); 
+    } 
+} 
