@@ -1,0 +1,137 @@
+===============================================
+ Restore the following notification databases 
+===============================================
+1. mysql -u root -p < res/db/notification-lgu.sql
+
+2. mysql -u root -p < res/db/notification-province.sql
+
+Note: Both databases have the same table structures and 
+	  we wanted to restore them separately for this demo. 
+
+
+=================================================================
+ Notification Servers 
+=================================================================
+
+Both servers have the same setup except for ports and connections 
+
+1. osiris3-server-notification-lgu (For LGU)
+
+	1.1  Server Conf Ports: 
+
+			8560 - For Websockets 
+			8570 - For Services 
+
+	1.2  Create a connection file (cloud_connection) 
+
+			provider=script
+			app.host=www.etracs.org:8170
+			app.cluster=osiris3
+			app.context=notification
+			readTimeout=30000
+
+
+2. osiris3-server-notification-prov (For Province)
+
+	1.1  Server Conf Ports: 
+	
+			8660 - For Websockets 
+			8670 - For Services 
+
+	1.2  Create a connection file (cloud_connection) 
+
+			provider=script
+			app.host=www.etracs.org:8170
+			app.cluster=osiris3
+			app.context=notification
+			readTimeout=30000
+
+	1.3  Create a connection file (ws_etracs_channel_cloud) 
+
+			provider=websocket
+			ws.host=www.etracs.org:8160
+			ws.protocol=etracs
+
+			acctname=test
+			apikey=f86c571984a7f2af91e9e5353fa97bbe		
+
+		Note: This is a user-defined connection file. You can create your own filename. 
+		      You will inject this connection to your code which listens to this connection. 
+		      Please refer to the file EtracsChannelCloudListener 
+		      on how to handle cloud notification. The file is located under 
+		      /apps/notification/modules/test-services.jar/scripts/messaging/ folder 
+
+
+===============================================
+ Affected Libraries and Services for this demo 
+===============================================
+1. Server libraries has changed. All jar files under /res/lib-server/ folder 
+   will be copied to <notification-server>/lib/ directory 
+
+2. Copy /res/lib-client/rameses-common2.jar to <osiris3-server>/workspace/web/resources/download/modules/core/ directory 
+
+3. Copy /res/lib-client/rameses-client-notification.jar to <osiris3-server>/workspace/web/resources/download/modules/shared/ directory 
+
+4. Copy /res/services/rameses-notification-proxy-services.jar to <osiris3-server>/workspace/services/apps/etracs25/modules/ directory 
+
+
+===============================================
+ Run the servers and test notification  
+===============================================
+1. Run osiris3-server-notification-lgu 
+2. Run osiris3-server-notification-prov 
+
+3. Create a workunit to handle 'test' notification group 
+
+	<workunit> 
+	    <invokers> 
+	        <invoker type="notification-group" caption="Testing" group="test"/>
+	    </invokers>  
+	</workunit>
+
+4. Deploy and run the etracs_platform or osiris3_test_platform 
+
+5. Open a web browser and type the following url: 
+
+	http://localhost:8570/osiris3/json/test/CloudNotificationTestService.testAddMessage 
+
+	This unit test will send a notification to channel 'etracs' and group 'test'. 
+	To send your own test data please follow the code below: 
+
+	@Service(value='CloudNotificationService', connection='notification_proxy') 
+    def remote;
+
+    @ProxyMethod 
+    public void sendMessage() { 
+        def data = [
+            objid    : 'MSG' + new java.rmi.server.UID(), 
+            sender   : 'System Administrator', 
+            senderid : 'sa',       
+            channel  : 'etracs',
+            groupid  : 'test',
+            message  : 'Hello Notification'
+            filetype : 'myfiletype', 
+            origin   : 'iligan', 
+        ]; 
+
+        //this is optional only 
+        data.data = [ 
+            remarks: 'My Sample Data',
+            name: 'Juan Dela Cruz'
+        ]; 
+
+        remote.addMessage(data); 
+    } 	
+
+	@ProxyMethod 
+    public void sendAttachment() { 
+        def data = [
+            objid    : 'ATTC' + new java.rmi.server.UID(), 
+            parentid : <HEADER_MESSAGE_ID>, 
+            name     : 'attachment #1', 
+            fileid   : 'file001', 
+            indexno  : 1 
+        ]; 
+        remote.addAttachment( data ); 
+    } 
+
