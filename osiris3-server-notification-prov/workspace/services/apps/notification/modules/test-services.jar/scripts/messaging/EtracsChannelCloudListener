@@ -1,0 +1,27 @@
+import com.rameses.annotations.*;
+import com.rameses.util.*;
+
+class EtracsChannelCloudListener
+{   
+	@Service('GroupNotificationService')
+	def groupNotificationSvc;
+
+	@Service(value='CloudNotificationService', connection='cloud_notification') 
+	def cloudNotificationSvc;
+
+	@OnMessage('ws_etracs_channel_cloud') 
+	public void receive( data ) {
+		println '[EtracsChannelCloudListener] ' + data; 
+		
+		/*
+			persist locally to the group notification.
+			after successfully added it will be published to the client 
+		*/
+		groupNotificationSvc.importMessage( data ); 
+
+		/*
+			notify the cloud so that this message will not be sent again 
+		*/
+		cloudNotificationSvc.markAsDelivered( data ); 
+	} 
+}

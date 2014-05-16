@@ -1,0 +1,6 @@
+provider=websocket
+ws.host=www.etracs.org:8160
+ws.protocol=etracs
+
+acctname=test
+apikey=f86c571984a7f2af91e9e5353fa97bbe

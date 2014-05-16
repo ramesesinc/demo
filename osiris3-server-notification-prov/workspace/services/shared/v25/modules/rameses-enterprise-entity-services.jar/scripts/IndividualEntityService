@@ -1,0 +1,82 @@
+import com.rameses.annotations.*
+import com.rameses.common.*
+import java.rmi.server.UID;
+import com.rameses.util.*;
+import com.rameses.io.*;
+import com.rameses.services.extended.*;
+
+class IndividualEntityService extends ActiveCrudListService {
+
+	@ActiveDB("entityindividual")
+	def	em; 
+
+	@ActiveDB("entity")
+	def	entity; 
+
+	@Env
+	def env;
+
+	@Service('DateService')
+	def dtSvc;
+
+	@Service("LOVService")
+	def LOV;
+
+	@Service('SequenceService')
+	def seqSvc;
+
+	def INDEX_CHAR_COUNT = 300;
+
+	String pagingKeys = 'e.objid'
+
+	@ProxyMethod
+	public def getColumns( params ) {
+		return [
+			[name:'entityno', caption:'Entity No', width:80, resizable:false],
+			[name:'name', caption:'Name'], 
+			[name:'address', caption:'Address'], 				
+			[name:'gender', caption:'Gender', width:50, resizable:false, alignment:'center'], 
+			[name:'birthdate', caption:'Birth Date', width:70, resizable:false, alignment:'center']
+		]; 
+	}
+
+	void updateName( o ) {
+		o.name = o.lastname+', '+o.firstname; 
+		if (o.middlename) o.name += ' '+o.middlename;	
+		def len = o.name.length()
+		if (len > INDEX_CHAR_COUNT) len = INDEX_CHAR_COUNT
+		o.entityname = o.name.substring(0, len);		
+	}
+
+	public void beforeCreate(o) {
+		o.entityno = seqSvc.getNextFormattedSeries( "ENTITY" ); 
+		updateName(o);
+		entity.create( o );
+	}
+
+	public void beforeUpdate(o) {
+		updateName(o);
+		entity.update( o );
+	}
+
+	public void afterRemoveEntity(o) {
+		entity.delete( o );
+	}
+
+	public void afterOpen( o ) {
+		def z = entity.read( o );
+		o.putAll( z );
+		if (o.birthdate){
+			def birthyear = dtSvc.getYear( o.birthdate )
+			o.age = dtSvc.serverYear - birthyear
+		}		
+		if( o.gender ) {
+			o.gendername = LOV.GENDER.get( o.gender );
+		}
+		if( o.civilstatus ) {
+			o.civilstatusname = LOV.CIVIL_STATUS.get( o.civilstatus );
+		}
+	}
+
+
+}

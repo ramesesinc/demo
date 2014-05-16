@@ -1,0 +1,8 @@
+provider=script
+app.host=www.etracs.org
+app.cluster=osiris3
+app.context=sms
+readTimeout=30000
+
+env.acctname=iligan
+env.apikey=5481b808b6c3412aa77acae39bfe79f6

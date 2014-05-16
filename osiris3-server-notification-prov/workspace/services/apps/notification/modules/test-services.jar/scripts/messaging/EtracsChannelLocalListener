@@ -1,0 +1,10 @@
+import com.rameses.annotations.*;
+import com.rameses.util.*;
+
+class EtracsChannelLocalListener
+{   
+	@OnMessage('ws_etracs_channel') 
+	public void receive( data ) {
+		println '[EtracsChannelLocalListener] ' + data; 
+	} 
+}
