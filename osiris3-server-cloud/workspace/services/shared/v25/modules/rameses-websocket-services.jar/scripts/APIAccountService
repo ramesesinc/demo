@@ -1,0 +1,16 @@
+
+import com.rameses.annotations.*;
+import com.rameses.util.*;
+import com.rameses.services.extended.*;
+
+class APIAccountService extends ActiveCrudListService 
+{	
+	@ActiveDB(value='api_account', em='api_account') 
+	def em; 
+
+	@ProxyMethod 
+	public def findKey( params ) { 
+		return em.findKey( [accountid:params.accountid, apikey:params.apikey] ); 
+	} 
+
+} 

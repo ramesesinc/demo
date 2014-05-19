@@ -1,0 +1,53 @@
+
+import com.rameses.annotations.*;
+import com.rameses.http.*;
+import com.rameses.util.*;
+
+class CloudNotificationNotifyTask 
+{	
+    @ActiveDB('cloud_notification')
+    def em;
+
+	@Service('DateService')
+	def dateSvc;    
+
+	@Service('CloudNotificationService')
+	def service;
+
+	@Service('CloudNotificationNotifyService')
+	def notifySvc;	
+
+
+	@Schedule(interval=2)
+	public void fetchPendingData( task ) {
+		def rundate = dateSvc.serverDate;
+		def list = em.getPendingMessages([_start:0, _limit:20]); 
+		while (!list.isEmpty()) {
+			def data = list.remove(0); 
+			data.rundate = rundate; 
+			processPendingData( data ); 
+		}
+	}    
+
+	private void processPendingData( data ) {
+		try { 
+			def rundate = data.rundate; 
+			if (data.dtexpiry && data.dtexpiry.before(rundate)) {
+				//message is already expired 
+				data.errormessage = 'FAILED';
+				service.markAsFailed( data ); 
+				return; 
+			} 
+
+			if (data.dtretry && data.dtretry.before(rundate)) {  
+				data.dtretry = dateSvc.add(rundate, '30s'); 
+				em.reschedulePending(data); 
+				notifySvc.notify( data ); 
+			} else { 
+				//rerun on the next schedule 
+			} 
+		} catch(Throwable t) {
+			println '[CloudNotificationUploadTask] failed to upload pending message caused by ' + t.class.name + ': ' + t.message; 
+		} 		
+	} 
+}

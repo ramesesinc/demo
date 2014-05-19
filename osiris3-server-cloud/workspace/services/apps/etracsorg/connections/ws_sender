@@ -1,0 +1,3 @@
+provider=http
+http.host=localhost:8160/etracschannel
+http.action=post

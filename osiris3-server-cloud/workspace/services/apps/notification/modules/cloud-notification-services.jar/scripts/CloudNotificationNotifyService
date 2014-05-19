@@ -1,0 +1,58 @@
+import com.rameses.annotations.*;
+import com.rameses.util.*;
+
+class CloudNotificationNotifyService
+{   
+    @ActiveDB('cloud_notification')
+    def em;
+
+    @XConnection('ws_sender')
+    def wssender;
+
+    @Async 
+    @ProxyMethod(local=true)  
+    public void notify( params ) { 
+        def data = em.read( params ); 
+        if (data) { 
+            data.group = data.channelgroup; 
+            wssender.send( data ); 
+        } else { 
+            em.removePending( [objid: params.objid] ); 
+        } 
+    } 
+
+    private def resolveData( data ) {
+        if (data == null) return null; 
+        try {
+            if (data instanceof String) {
+                def bytes = new Base64CoderImpl().decode(data.toCharArray()); 
+                return toObject(bytes); 
+            } else if (data instanceof byte[]) {
+                return toObject(data); 
+            } else {
+                return data; 
+            }
+        } catch(Throwable t) {
+            return data; 
+        } 
+    }
+
+    private Object toObject(byte[] bytes) {
+        if (bytes == null || bytes.length == 0) return null; 
+        
+        def bais = null;
+        def ois = null;
+        try {
+            bais = new java.io.ByteArrayInputStream(bytes); 
+            ois = new java.io.ObjectInputStream(bais);
+            return ois.readObject();
+        } catch(RuntimeException re) {
+            throw re; 
+        } catch(Exception e) {
+            throw new RuntimeException(e.getMessage(), e); 
+        } finally {
+            try { ois.close(); }catch(Throwable t){;} 
+            try { bais.close(); }catch(Throwable t){;} 
+        } 
+    }  
+} 

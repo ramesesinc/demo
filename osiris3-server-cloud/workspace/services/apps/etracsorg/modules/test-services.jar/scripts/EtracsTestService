@@ -1,0 +1,13 @@
+import com.rameses.annotations.*;
+import com.rameses.util.*;
+
+class EtracsTestService
+{   
+	@XConnection('ws_etracs_channel')
+	def etracschannel;
+
+	@ProxyMethod
+	public void sendMessage( data ) {
+		etracschannel.send( data );
+	}
+}

@@ -1,0 +1,53 @@
+
+import com.rameses.annotations.*;
+import com.rameses.http.*;
+import com.rameses.util.*;
+
+class ChannelLoaderTask 
+{	
+	@ActiveDB(value='channel')
+	def em;
+	
+    @XConnection('ws_sender')
+    def wssender;
+
+	@Schedule(interval=30, immediate=true) 
+	public void startLoading( task ) {
+		if (!task.properties.loaded) {
+			em.removeActiveChannels(); 
+			loadChannels( task, em.getChannels() ).each {
+				em.create(it, 'active'); 
+			} 
+			task.properties.loaded = true; 
+		} else {
+			loadChannels( task, em.getNewChannels() ).each {
+				em.create(it, 'active'); 
+			} 
+		} 
+	} 
+
+	@Schedule(interval=20) 
+	public void startUnloading( task ) {
+ 		em.getDisabledChannels().each {
+ 			wssender.send([action:'removechannel', channel: it.objid.toLowerCase()]);
+ 			em.delete(it, 'active'); 
+ 		}
+	} 
+
+
+	private List loadChannels( task, channels ) {
+		def loadedlist = [];
+		channels.each { 
+			try { 
+				def channelname = it.objid.toLowerCase(); 
+				def channeltype = (it.type=='queue'? it.type: 'topic'); 
+				wssender.send([action:'addchannel', channel: channelname, type: channeltype]); 
+				loadedlist << [objid: channelname]; 
+			} catch(Throwable t) { 
+				def cause = ExceptionManager.getOriginal(e);  
+				println "failed to add channel '${it.objid}' caused by ${cause.message}"; 
+			} 
+		} 
+		return loadedlist;
+	}
+}

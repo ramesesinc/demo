@@ -1,0 +1,3 @@
+provider=websocket
+ws.host=localhost:8160
+ws.protocol=etracs

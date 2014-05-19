@@ -1,0 +1,5 @@
+<%
+println 'entering getPhoto action ' + PARAMS;
+
+return new byte[0];
+%>

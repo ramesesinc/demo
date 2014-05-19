@@ -1,0 +1,6 @@
+provider=websocket
+ws.host=localhost:8160
+ws.protocol=etracs
+
+acctname=system
+apikey=57128f70ed791bfc78cdec46e54aa77d

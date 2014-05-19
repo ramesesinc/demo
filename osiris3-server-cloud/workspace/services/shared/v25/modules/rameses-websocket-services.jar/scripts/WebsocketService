@@ -1,0 +1,36 @@
+
+import com.rameses.annotations.*;
+import com.rameses.util.*;
+
+class WebsocketService 
+{		
+	@ActiveDB(value='api_account', dynamic=true)
+	def accountdb;
+
+	@ProxyMethod 
+	public Map authenticate( Map params ) { 
+		def em = accountdb.lookup('system'); 
+		def data = em.read([name: params.acctname]); 
+		if (!data) { 
+			throw new AccessDeniedException("Invalid account '"+params.acctname+"'"); 
+		} 
+		if (!(data.state == 1)) { 
+			throw new AccessDeniedException("Your account is currently deactivated"); 
+		} 
+
+		def keydata = em.findKey( [accountid:data.name, apikey:params.apikey] ); 
+		if (!keydata) { 
+			throw new AccessDeniedException("Invalid API_KEY for account '"+data.name+"'"); 
+		} 
+		if (keydata.expired == 1) { 
+			throw new AccessDeniedException("The API_KEY has already been expired. Please contact your system administrator."); 
+		} 	
+
+		params.accountid = data.name; 
+		def channelgroup = em.findChannelGroup( params ); 
+		if (!channelgroup) { 
+			throw new AccessDeniedException("You account is not allowed to access the channelgroup '"+ (params.channel + '/' + params.group) + "'"); 
+		} 
+		return [:]; 
+	}  	
+} 

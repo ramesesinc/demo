@@ -1,0 +1,29 @@
+<schema>
+	<element name="api_account" tablename="api_account">
+		<field name="name" primary="true"/> 
+		<field name="description" required="true"/> 
+		<field name="dtcreated" required="true"/> 
+		<field name="createdby" required="true"/> 
+		<field name="state" /> 
+		<field name="dtsuspended"/> 
+		<field name="suspendedby"/> 
+		<field name="suspendremarks"/> 
+	</element>
+
+	<element name="key" tablename="api_account_key">
+		<field name="objid" primary="true"/> 
+		<field name="accountid" required="true"/> 
+		<field name="apikey" required="true"/> 
+		<field name="dtissued" required="true"/> 
+		<field name="dtexpiry" required="true"/> 
+		<field name="features"/> 
+	</element>
+
+	<element name="channel" tablename="api_account_channel">
+		<field name="objid" primary="true"/>                    
+		<field name="accountid" required="true"/> 
+		<field name="channel" required="true"/> 
+		<field name="group" required="true"/> 
+		<field name="state" required="true"/> 
+	</element>
+</schema>
